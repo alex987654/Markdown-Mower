@@ -2,13 +2,16 @@ import { ALL_RULES } from "./rules/index.js";
 import { Rule, RuleOptions, LintReport, Diagnostic } from "./types.js";
 import { estimateTokens } from "./tokenizer.js";
 
+// Rules that change document rendering and therefore stay off until the user
+// explicitly opts into Aggressive mode. The UI ties these to the Aggressive
+// toggle (auto-checks them when it goes on, greys them out when it goes off);
+// the rules themselves still self-gate on opts.aggressive as defence-in-depth.
+export const AGGRESSIVE_RULE_IDS = new Set(["MD-AI012", "MD-AI051", "MD-AI101"]);
+
 export function defaultRuleOptions(): RuleOptions {
   const enabled: Record<string, boolean> = {};
   for (const r of ALL_RULES) {
-    // Every rule starts enabled. The aggressive-only rules (MD-AI012, MD-AI051,
-    // MD-AI101) self-gate on opts.aggressive inside their run() — so they're
-    // safe to leave on; they simply do nothing until aggressive mode is set.
-    enabled[r.id] = true;
+    enabled[r.id] = !AGGRESSIVE_RULE_IDS.has(r.id);
   }
   return { enabled, aggressive: false };
 }

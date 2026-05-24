@@ -1,4 +1,4 @@
-import { lint, allRules, defaultRuleOptions } from "./linter.js";
+import { lint, allRules, defaultRuleOptions, AGGRESSIVE_RULE_IDS } from "./linter.js";
 import { Rule, RuleOptions, LintReport, Diagnostic, Severity } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -286,9 +286,14 @@ function renderRuleToggles() {
       create("header", { class: "rule-group-header" }, cat),
     );
     for (const r of items) {
-      const row = create("label", { class: "rule-row" });
+      const isAggressive = AGGRESSIVE_RULE_IDS.has(r.id);
+      const locked = isAggressive && !state.options.aggressive;
+      const row = create("label", {
+        class: locked ? "rule-row rule-row--locked" : "rule-row",
+      });
       const cb = create("input", { type: "checkbox" }) as HTMLInputElement;
       cb.checked = state.options.enabled[r.id];
+      cb.disabled = locked;
       cb.addEventListener("change", () => {
         state.options.enabled[r.id] = cb.checked;
         rerun();
@@ -421,7 +426,12 @@ function wireOutputActions() {
   $<HTMLButtonElement>("#aggressive-toggle").addEventListener(
     "change",
     (e) => {
-      state.options.aggressive = (e.target as HTMLInputElement).checked;
+      const on = (e.target as HTMLInputElement).checked;
+      state.options.aggressive = on;
+      for (const id of AGGRESSIVE_RULE_IDS) {
+        state.options.enabled[id] = on;
+      }
+      renderRuleToggles();
       rerun();
     },
   );

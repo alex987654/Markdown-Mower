@@ -616,6 +616,15 @@ main {
 
 .rule-row:hover { background: rgba(139, 45, 30, 0.04); }
 
+.rule-row--locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rule-row--locked:hover { background: transparent; }
+
+.rule-row--locked input[type=checkbox] { cursor: not-allowed; }
+
 .rule-row input[type=checkbox] {
   accent-color: var(--red);
   margin-top: 0.3rem;
