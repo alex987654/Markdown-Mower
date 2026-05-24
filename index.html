@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Markdown Mower, a tokenizer-agnostic linter for Markdown documents used by AI</title>
+  <meta name="description" content="Browser-based Markdown linter that reduces token cost using universal heuristics. No data leaves your browser." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="masthead-mark">
+      <span class="mark-pilcrow">¶</span>
+    </div>
+    <div class="masthead-text">
+      <h1 class="masthead-title">Markdown Mower</h1>
+      <p class="masthead-sub">A tokenizer-agnostic linter for Markdown destined for an LLM. Reduces token cost by removing what AI models usually do not need and what human readers may not necessarily consider essential.</p>
+    </div>
+    <div class="masthead-meta">
+      <span class="masthead-tag">v0.1</span>
+      <span class="masthead-tag">runs in your browser</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Input controls strip -->
+  <section class="control-strip">
+    <div class="control-group">
+      <label class="control-btn" for="file-input">
+        <span class="btn-glyph">↑</span>
+        <span>Upload .md</span>
+        <input type="file" id="file-input" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden />
+      </label>
+
+      <div class="control-url">
+        <input type="url" id="url-input" placeholder="https://raw.githubusercontent.com/user/repo/main/README.md" />
+        <button id="fetch-url-btn" class="control-btn">
+          <span class="btn-glyph">→</span>
+          <span>Fetch</span>
+        </button>
+      </div>
+
+      <button id="sample-btn" class="control-btn ghost">Load sample</button>
+      <button id="clear-btn" class="control-btn ghost">Clear</button>
+
+      <label class="aggressive-toggle">
+        <input type="checkbox" id="aggressive-toggle" />
+        <span>Aggressive mode</span>
+        <span class="tooltip" title="Enables rules that change rendering (e.g. tables → lists, em-dash → hyphen).">?</span>
+      </label>
+    </div>
+    <div id="url-status" class="url-status"></div>
+  </section>
+
+  <!-- The diptych: original | optimized -->
+  <section class="diptych" id="input-area">
+    <article class="pane pane-original">
+      <header class="pane-header">
+        <h2 class="pane-title"><span class="pane-mark">①</span> Original</h2>
+        <span id="input-meta" class="pane-meta">0 chars · ~0–0 tokens</span>
+      </header>
+      <textarea id="input" spellcheck="false" placeholder="Paste Markdown, drop a file here, fetch by URL, or click 'Load sample'."></textarea>
+    </article>
+
+    <article class="pane pane-optimized">
+      <header class="pane-header">
+        <h2 class="pane-title"><span class="pane-mark">②</span> Trimmed</h2>
+        <span id="output-meta" class="pane-meta">0 chars · ~0–0 tokens</span>
+        <div class="pane-actions">
+          <button id="copy-btn" class="control-btn">Copy</button>
+          <button id="download-btn" class="control-btn">Download</button>
+        </div>
+      </header>
+      <textarea id="output" spellcheck="false" placeholder="The trimmed Markdown appears here."></textarea>
+    </article>
+  </section>
+
+  <!-- Stats banner -->
+  <section class="stats-banner" id="stats"></section>
+
+  <!-- Diagnostics + rule toggles diptych -->
+  <section class="lower-grid">
+    <article class="diagnostics-pane">
+      <header class="lower-header">
+        <h2 class="lower-title">Marginalia</h2>
+        <p class="lower-sub">Every change explained. Information-only notes (orphan headings, wide tables, bare URLs, near-duplicates) appear here as well.</p>
+      </header>
+      <div id="diagnostics"></div>
+    </article>
+
+    <aside class="rules-pane">
+      <header class="lower-header">
+        <h2 class="lower-title">Rules</h2>
+        <p class="lower-sub">Toggle individual rules. Three rules are off by default — they change document rendering and require <em>Aggressive mode</em>.</p>
+      </header>
+      <div id="rules-list"></div>
+    </aside>
+  </section>
+
+  <section class="colophon">
+    <h2 class="colophon-title">Why a tokenizer-agnostic linter?</h2>
+    <p>Tokenizer counts change with every model release and don't agree across vendors. Rather than pretend one number is "the" token cost, this tool gives a <em>range</em> built from two well-known rules of thumb (≈ chars/4.5 to chars/3.2, with corrections for newlines, repeated-character runs, and non-ASCII) and focuses on universal patterns that cost more in <em>every</em> tokenizer: padded tables, decorative banners, whole-paragraph emphasis, repeated URLs, hedge phrases, invisible whitespace.</p>
+    <p>Inspired in part by SkillReducer (arXiv:2603.29919) and the broader "less-is-more" finding that removing non-essential content tends to <em>improve</em> agent quality, not just reduce cost. This linter handles the part of that work that doesn't require a language model.</p>
+    <p class="colophon-foot">Source on GitHub. Open in any browser; no server, no telemetry, no data leaves the page.</p>
+  </section>
+
+</main>
+
+<script type="module" src="./dist/app.js"></script>
+</body>
+</html>

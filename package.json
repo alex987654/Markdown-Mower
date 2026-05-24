@@ -1,0 +1,24 @@
+{
+  "name": "markdown-trimmer",
+  "version": "0.1.0",
+  "description": "A tokenizer-agnostic Markdown linter that reduces token cost for AI-target documents. Runs entirely in the browser; no server, no telemetry.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "smoke": "node smoke-test.mjs"
+  },
+  "keywords": [
+    "markdown",
+    "linter",
+    "tokens",
+    "llm",
+    "ai",
+    "optimization",
+    "github-pages"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
