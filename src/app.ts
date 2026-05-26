@@ -320,6 +320,31 @@ function setInput(text: string) {
   rerun();
 }
 
+async function convertPdfToMarkdown(file: File): Promise<string> {
+  const statusEl = $("#url-status");
+  statusEl.textContent = `Converting ${file.name}...`;
+  statusEl.className = "url-status loading";
+  try {
+    // @ts-ignore — runtime ESM import; no local types for the CDN module.
+    const mod = await import("https://esm.sh/@opendocsg/pdf2md");
+    const pdf2md: (buf: Uint8Array) => Promise<string> =
+      (mod as any).default ?? mod;
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const raw = await pdf2md(buf);
+    const pages = raw.split(/<!-- PAGE_BREAK -->\n?/);
+    const withMarkers = pages
+      .map((p, i) => `<!-- Page ${i + 1} -->\n${p}`)
+      .join("\n");
+    statusEl.textContent = `Converted ${file.name} (${withMarkers.length.toLocaleString()} chars, ${pages.length} page${pages.length === 1 ? "" : "s"}).`;
+    statusEl.className = "url-status ok";
+    return withMarkers;
+  } catch (err) {
+    statusEl.textContent = `PDF conversion failed: ${(err as Error).message}`;
+    statusEl.className = "url-status err";
+    throw err;
+  }
+}
+
 function wireInput() {
   const input = $<HTMLTextAreaElement>("#input");
   input.addEventListener("input", () => {
@@ -341,6 +366,10 @@ function wireInput() {
     drop.classList.remove("drag-over");
     const f = e.dataTransfer?.files?.[0];
     if (!f) return;
+    if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
+      try { setInput(await convertPdfToMarkdown(f)); } catch { /* status already rendered */ }
+      return;
+    }
     const text = await f.text();
     setInput(text);
   });
@@ -352,6 +381,18 @@ function wireInput() {
     if (!f) return;
     const text = await f.text();
     setInput(text);
+  });
+
+  // PDF file picker.
+  const pdfInput = $<HTMLInputElement>("#pdf-input");
+  pdfInput.addEventListener("change", async () => {
+    const f = pdfInput.files?.[0];
+    if (!f) return;
+    try {
+      const md = await convertPdfToMarkdown(f);
+      setInput(md);
+    } catch { /* status already rendered */ }
+    pdfInput.value = "";
   });
 
   // URL fetch.

@@ -229,6 +229,29 @@ function setInput(text) {
     $("#input").value = text;
     rerun();
 }
+async function convertPdfToMarkdown(file) {
+    const statusEl = $("#url-status");
+    statusEl.textContent = `Converting ${file.name}...`;
+    statusEl.className = "url-status loading";
+    try {
+        const mod = await import("https://esm.sh/@opendocsg/pdf2md");
+        const pdf2md = mod.default ?? mod;
+        const buf = new Uint8Array(await file.arrayBuffer());
+        const raw = await pdf2md(buf);
+        const pages = raw.split(/<!-- PAGE_BREAK -->\n?/);
+        const withMarkers = pages
+            .map((p, i) => `<!-- Page ${i + 1} -->\n${p}`)
+            .join("\n");
+        statusEl.textContent = `Converted ${file.name} (${withMarkers.length.toLocaleString()} chars, ${pages.length} page${pages.length === 1 ? "" : "s"}).`;
+        statusEl.className = "url-status ok";
+        return withMarkers;
+    }
+    catch (err) {
+        statusEl.textContent = `PDF conversion failed: ${err.message}`;
+        statusEl.className = "url-status err";
+        throw err;
+    }
+}
 function wireInput() {
     const input = $("#input");
     input.addEventListener("input", () => {
@@ -250,6 +273,13 @@ function wireInput() {
         const f = e.dataTransfer?.files?.[0];
         if (!f)
             return;
+        if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
+            try {
+                setInput(await convertPdfToMarkdown(f));
+            }
+            catch { /* status already rendered */ }
+            return;
+        }
         const text = await f.text();
         setInput(text);
     });
@@ -261,6 +291,19 @@ function wireInput() {
             return;
         const text = await f.text();
         setInput(text);
+    });
+    // PDF file picker.
+    const pdfInput = $("#pdf-input");
+    pdfInput.addEventListener("change", async () => {
+        const f = pdfInput.files?.[0];
+        if (!f)
+            return;
+        try {
+            const md = await convertPdfToMarkdown(f);
+            setInput(md);
+        }
+        catch { /* status already rendered */ }
+        pdfInput.value = "";
     });
     // URL fetch.
     $("#fetch-url-btn").addEventListener("click", async () => {
