@@ -320,15 +320,29 @@ function setInput(text: string) {
   rerun();
 }
 
+type Pdf2Md = (buf: Uint8Array) => Promise<string>;
+let pdf2mdPromise: Promise<Pdf2Md> | null = null;
+
+function prewarmPdf2md(): Promise<Pdf2Md> {
+  if (!pdf2mdPromise) {
+    pdf2mdPromise = (async () => {
+      // @ts-ignore — runtime ESM import; no local types for the CDN module.
+      const mod = await import("https://esm.sh/@opendocsg/pdf2md");
+      return ((mod as any).default ?? mod) as Pdf2Md;
+    })().catch((err) => {
+      pdf2mdPromise = null;
+      throw err;
+    });
+  }
+  return pdf2mdPromise;
+}
+
 async function convertPdfToMarkdown(file: File): Promise<string> {
   const statusEl = $("#url-status");
   statusEl.textContent = `Converting ${file.name}...`;
   statusEl.className = "url-status loading";
   try {
-    // @ts-ignore — runtime ESM import; no local types for the CDN module.
-    const mod = await import("https://esm.sh/@opendocsg/pdf2md");
-    const pdf2md: (buf: Uint8Array) => Promise<string> =
-      (mod as any).default ?? mod;
+    const pdf2md = await prewarmPdf2md();
     const buf = new Uint8Array(await file.arrayBuffer());
     const raw = await pdf2md(buf);
     const pages = raw.split(/<!-- PAGE_BREAK -->\n?/);
@@ -562,4 +576,9 @@ document.addEventListener("DOMContentLoaded", () => {
   wireOutputActions();
   renderRuleToggles();
   renderEmpty();
+
+  const idle: (cb: () => void) => void =
+    (window as any).requestIdleCallback?.bind(window) ??
+    ((cb: () => void) => setTimeout(cb, 1500));
+  idle(() => { prewarmPdf2md().catch(() => { /* surfaced on actual use */ }); });
 });

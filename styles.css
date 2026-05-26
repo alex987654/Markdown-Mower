@@ -273,6 +273,15 @@ main {
 .url-status.ok      { color: #2D6A4F; }
 .url-status.err     { color: var(--red); }
 
+.url-status.loading::before {
+  content: "¶";
+  display: inline-block;
+  margin-right: 0.4em;
+  font-style: normal;
+  animation: mm-spin 1.2s linear infinite;
+}
+@keyframes mm-spin { to { transform: rotate(360deg); } }
+
 /* -----------------------------------------------------------
    Diptych — Original / Trimmed
    ----------------------------------------------------------- */

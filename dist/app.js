@@ -229,13 +229,25 @@ function setInput(text) {
     $("#input").value = text;
     rerun();
 }
+let pdf2mdPromise = null;
+function prewarmPdf2md() {
+    if (!pdf2mdPromise) {
+        pdf2mdPromise = (async () => {
+            const mod = await import("https://esm.sh/@opendocsg/pdf2md");
+            return mod.default ?? mod;
+        })().catch((err) => {
+            pdf2mdPromise = null;
+            throw err;
+        });
+    }
+    return pdf2mdPromise;
+}
 async function convertPdfToMarkdown(file) {
     const statusEl = $("#url-status");
     statusEl.textContent = `Converting ${file.name}...`;
     statusEl.className = "url-status loading";
     try {
-        const mod = await import("https://esm.sh/@opendocsg/pdf2md");
-        const pdf2md = mod.default ?? mod;
+        const pdf2md = await prewarmPdf2md();
         const buf = new Uint8Array(await file.arrayBuffer());
         const raw = await pdf2md(buf);
         const pages = raw.split(/<!-- PAGE_BREAK -->\n?/);
@@ -460,4 +472,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wireOutputActions();
     renderRuleToggles();
     renderEmpty();
+    const idle = window.requestIdleCallback?.bind(window) ??
+        ((cb) => setTimeout(cb, 1500));
+    idle(() => { prewarmPdf2md().catch(() => { /* surfaced on actual use */ }); });
 });
