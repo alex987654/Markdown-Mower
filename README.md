@@ -1,8 +1,14 @@
 # Markdown Mower
 
 A browser-based, tokenizer agnostic Markdown trimmer that reduces the token cost of documents you send to LLMs. Runs entirely client-side; no server, no telemetry.
+Supports conversion from PDFs -> to raw Markdown -> to trimmed Markdown. 
+
 
 [**Live demo**](https://alex987654.github.io/Markdown-Mower/) 
+
+
+Please note: token estimation is approximate. 
+The tool estimates a token count **range** built from two rules of thumb (≈ `chars / 4.5` to `chars / 3.2`, with corrections for newlines, repeated-character runs, and non-ASCII characters). 
 
 
 ## Rules
