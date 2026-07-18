@@ -13,8 +13,7 @@
     "sourceMap": false,
     "outDir": "./dist",
     "rootDir": "./src",
-    "removeComments": false,
-    "ignoreDeprecations": "6.0"
+    "removeComments": false
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
