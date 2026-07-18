@@ -4,7 +4,7 @@ import { estimateTokens } from "./tokenizer.js";
 // explicitly opts into Aggressive mode. The UI ties these to the Aggressive
 // toggle (auto-checks them when it goes on, greys them out when it goes off);
 // the rules themselves still self-gate on opts.aggressive as defence-in-depth.
-export const AGGRESSIVE_RULE_IDS = new Set(["MD-AI012", "MD-AI051", "MD-AI101"]);
+export const AGGRESSIVE_RULE_IDS = new Set(["MD-AI012", "MD-AI051", "MD-AI081", "MD-AI101"]);
 export function defaultRuleOptions() {
     const enabled = {};
     for (const r of ALL_RULES) {

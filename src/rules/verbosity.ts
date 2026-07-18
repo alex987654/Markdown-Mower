@@ -5,6 +5,11 @@ import { findCodeFenceRanges } from "./comments.js";
 // professional writing. These compress with no information loss. The rewrites
 // are conservative — only patterns where the shorter form is uncontroversial.
 //
+// Hedge/intensifier deletion (very, really, quite, actually, basically) lives
+// in its own rule (MD-AI081) because it can shift meaning and rewrites quoted
+// prose; it is gated behind Aggressive mode like the other rendering-changing
+// rules.
+//
 // We avoid:
 //   - Anything inside code fences
 //   - Anything inside inline code spans (`...`)
@@ -21,7 +26,7 @@ interface Replacement {
   label: string;
 }
 
-const REPLACEMENTS: Replacement[] = [
+const CORE_REPLACEMENTS: Replacement[] = [
   // Discourse markers that lead nowhere. We drop them entirely because the
   // sentences that follow are the actual content; the markers are reader
   // signals ("pay attention to what comes next") that an LLM doesn't need —
@@ -60,15 +65,6 @@ const REPLACEMENTS: Replacement[] = [
   { pattern: /\bin the case of\b/gi, replacement: "for", label: "in the case of → for" },
   { pattern: /\bin (?:a )?manner (?:that is|which is) similar\b/gi, replacement: "similarly", label: "in a manner similar → similarly" },
 
-  // Hedges that LLM readers ignore. We optionally consume a leading comma so
-  // parenthetical "X, basically, Y" collapses cleanly to "X Y" rather than
-  // "X, Y" with a stranded comma.
-  { pattern: /(,\s+)?\b(?:basically|essentially|fundamentally)(?:\s+speaking)?,?\s+/gi, replacement: " ", label: "basically/essentially → (removed)" },
-  { pattern: /(,\s+)?\bactually,?\s+/gi, replacement: " ", label: "actually → (removed)" },
-  { pattern: /\bquite\s+/gi, replacement: "", label: "quite → (removed)" },
-  { pattern: /\bvery\s+/gi, replacement: "", label: "very → (removed)" },
-  { pattern: /\breally\s+/gi, replacement: "", label: "really → (removed)" },
-
   // Doubling.
   { pattern: /\beach (?:and )?every\b/gi, replacement: "each", label: "each and every → each" },
   { pattern: /\bfirst and foremost\b/gi, replacement: "first", label: "first and foremost → first" },
@@ -83,10 +79,25 @@ const REPLACEMENTS: Replacement[] = [
   // {{CAP}} sentinel that a post-pass replaces with the capitalized first
   // letter of the surviving sentence.
   { pattern: /^(?:in conclusion|to summarize|in summary),?\s+([a-z])/gim, replacement: "{{CAP}}$1", label: "to summarize / in conclusion → (removed)" },
+];
 
-  // Post-removal cleanup. These run after the main replacements above and
-  // tidy the punctuation/whitespace that earlier removals left behind. They
-  // never produce diagnostics of their own (their label starts with "(internal").
+// Hedges and intensifiers that LLM readers ignore. We optionally consume a
+// leading comma so parenthetical "X, basically, Y" collapses cleanly to "X Y"
+// rather than "X, Y" with a stranded comma. Deleting these can shift meaning
+// and rewrites quoted prose — hence the separate Aggressive-gated rule.
+const HEDGE_REPLACEMENTS: Replacement[] = [
+  { pattern: /(,\s+)?\b(?:basically|essentially|fundamentally)(?:\s+speaking)?,?\s+/gi, replacement: " ", label: "basically/essentially → (removed)" },
+  { pattern: /(,\s+)?\bactually,?\s+/gi, replacement: " ", label: "actually → (removed)" },
+  { pattern: /\bquite\s+/gi, replacement: "", label: "quite → (removed)" },
+  { pattern: /\bvery\s+/gi, replacement: "", label: "very → (removed)" },
+  { pattern: /\breally\s+/gi, replacement: "", label: "really → (removed)" },
+];
+
+// Post-removal cleanup, shared by both rules. These run after the main
+// replacements and tidy the punctuation/whitespace that removals left behind.
+// They never produce diagnostics of their own (their label starts with
+// "(internal") and don't count toward occurrences.
+const CLEANUP_REPLACEMENTS: Replacement[] = [
   { pattern: /[ \t]+,/g, replacement: ",", label: "(internal: tighten space-before-comma)" },
   { pattern: /,(\s*,)+/g, replacement: ",", label: "(internal: collapse stranded commas)" },
   { pattern: /[ \t]{2,}/g, replacement: " ", label: "(internal: collapse spaces)" },
@@ -132,49 +143,63 @@ function withMaskedCode(
     .join("");
 }
 
+// Apply a replacement library (plus the shared cleanup pass) outside code.
+// Occurrences and samples only count the real replacements, not the internal
+// cleanup; charsSaved counts everything so the number matches the output.
+function applyReplacements(
+  text: string,
+  replacements: Replacement[],
+): { out: string; occurrences: number; saved: number; samples: string[] } {
+  let occurrences = 0;
+  let saved = 0;
+  const samples: string[] = [];
+  const out = withMaskedCode(text, (visible) => {
+    let v = visible;
+    for (const rep of [...replacements, ...CLEANUP_REPLACEMENTS]) {
+      v = v.replace(rep.pattern, (match, ...args) => {
+        let replacement = rep.replacement;
+        // Handle the {{CAP}}<letter> capitalization sentinel used for
+        // sentence-start removals (e.g. "In conclusion, this..." → "This...")
+        if (replacement.includes("{{CAP}}")) {
+          const cap = (typeof args[0] === "string" ? args[0] : "").toUpperCase();
+          replacement = replacement.replace("{{CAP}}$1", cap);
+        }
+        // Preserve first-letter case where meaningful.
+        if (
+          replacement &&
+          match.length > 0 &&
+          match[0] >= "A" &&
+          match[0] <= "Z" &&
+          replacement[0] >= "a" &&
+          replacement[0] <= "z"
+        ) {
+          replacement = replacement[0].toUpperCase() + replacement.slice(1);
+        }
+        if (!rep.label.startsWith("(internal")) {
+          occurrences += 1;
+          if (samples.length < 3) samples.push(rep.label);
+        }
+        saved += match.length - replacement.length;
+        return replacement;
+      });
+    }
+    return v;
+  });
+  return { out, occurrences, saved, samples };
+}
+
 export const verbosityRewrites: Rule = {
   id: "MD-AI080",
   name: "Compress verbose phrasing",
   category: "verbosity",
   severity: "medium",
   description:
-    "Apply a library of universal English compressions: 'in order to' → 'to', 'due to the fact that' → 'because', drop empty hedges. Skips code blocks.",
+    "Apply a library of universal English compressions: 'in order to' → 'to', 'due to the fact that' → 'because'. Skips code blocks.",
   run(text): RuleResult {
-    let occurrences = 0;
-    let saved = 0;
-    const samples: string[] = [];
-    const out = withMaskedCode(text, (visible) => {
-      let v = visible;
-      for (const rep of REPLACEMENTS) {
-        v = v.replace(rep.pattern, (match, ...args) => {
-          let replacement = rep.replacement;
-          // Handle the {{CAP}}<letter> capitalization sentinel used for
-          // sentence-start removals (e.g. "In conclusion, this..." → "This...")
-          if (replacement.includes("{{CAP}}")) {
-            const cap = (typeof args[0] === "string" ? args[0] : "").toUpperCase();
-            replacement = replacement.replace("{{CAP}}$1", cap);
-          }
-          // Preserve first-letter case where meaningful.
-          if (
-            replacement &&
-            match.length > 0 &&
-            match[0] >= "A" &&
-            match[0] <= "Z" &&
-            replacement[0] >= "a" &&
-            replacement[0] <= "z"
-          ) {
-            replacement = replacement[0].toUpperCase() + replacement.slice(1);
-          }
-          occurrences += 1;
-          saved += match.length - replacement.length;
-          if (samples.length < 3 && rep.label && !rep.label.startsWith("(internal")) {
-            samples.push(rep.label);
-          }
-          return replacement;
-        });
-      }
-      return v;
-    });
+    const { out, occurrences, saved, samples } = applyReplacements(
+      text,
+      CORE_REPLACEMENTS,
+    );
     if (occurrences === 0) return { text, diagnostics: [] };
     return {
       text: out,
@@ -185,6 +210,41 @@ export const verbosityRewrites: Rule = {
           category: this.category,
           severity: this.severity,
           message: `Applied ${occurrences} verbosity rewrite(s).`,
+          detail:
+            samples.length > 0
+              ? `Examples applied: ${samples.join("; ")}`
+              : undefined,
+          occurrences,
+          charsSaved: Math.max(0, saved),
+        },
+      ],
+    };
+  },
+};
+
+export const hedgeDeletion: Rule = {
+  id: "MD-AI081",
+  name: "Delete hedge words (aggressive)",
+  category: "verbosity",
+  severity: "low",
+  description:
+    "Remove intensifiers and hedges: very, really, quite, actually, basically. Can shift meaning and rewrites quoted prose — off by default.",
+  run(text, opts): RuleResult {
+    if (!opts.aggressive) return { text, diagnostics: [] };
+    const { out, occurrences, saved, samples } = applyReplacements(
+      text,
+      HEDGE_REPLACEMENTS,
+    );
+    if (occurrences === 0) return { text, diagnostics: [] };
+    return {
+      text: out,
+      diagnostics: [
+        {
+          ruleId: this.id,
+          ruleName: this.name,
+          category: this.category,
+          severity: this.severity,
+          message: `Deleted ${occurrences} hedge word(s).`,
           detail:
             samples.length > 0
               ? `Examples applied: ${samples.join("; ")}`

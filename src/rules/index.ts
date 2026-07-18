@@ -49,7 +49,7 @@ import {
   flagBareLongUrls,
 } from "./links.js";
 
-import { verbosityRewrites } from "./verbosity.js";
+import { verbosityRewrites, hedgeDeletion } from "./verbosity.js";
 
 import { detectParagraphDuplication } from "./duplication.js";
 
@@ -106,7 +106,9 @@ export const ALL_RULES: Rule[] = [
   flagBareLongUrls,
 
   // 10. Verbosity rewrites — operate on prose, after most structural cleanup.
+  //     Hedge deletion runs after the core compressions and is aggressive-gated.
   verbosityRewrites,
+  hedgeDeletion,
 
   // 11. Whitespace finishing — collapse blank-line runs created by the
   //     earlier removals.

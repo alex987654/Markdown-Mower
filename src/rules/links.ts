@@ -195,11 +195,16 @@ export const stripUrlTrackingParameters: Rule = {
       if (isInFence(offset)) return url;
       const cleaned = url.replace(paramRe, "");
       // Tidy up: turn ?& or ?$ from leading-param removal into nothing.
-      const tidied = cleaned
+      let tidied = cleaned
         .replace(/\?&/g, "?")
         .replace(/\?$/g, "")
         .replace(/&&+/g, "&")
         .replace(/&$/g, "");
+      // If the removed param was first (?tracked=x&real=y), the "?" was
+      // consumed with it — promote the first surviving "&" back to "?".
+      if (url.includes("?") && !tidied.includes("?") && tidied.includes("&")) {
+        tidied = tidied.replace("&", "?");
+      }
       if (tidied.length < url.length) {
         saved += url.length - tidied.length;
         occurrences += 1;

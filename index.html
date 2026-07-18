@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Markdown Mower, a tokenizer-agnostic linter for Markdown documents used by AI</title>
-  <meta name="description" content="Browser-based Markdown linter that reduces token cost using universal heuristics. No data leaves your browser." />
+  <meta name="description" content="Browser-based Markdown linter that reduces token cost using universal heuristics. No document data leaves your browser." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -59,7 +59,7 @@
       <label class="aggressive-toggle">
         <input type="checkbox" id="aggressive-toggle" />
         <span>Aggressive mode</span>
-        <span class="tooltip" title="Enables rules that change rendering (e.g. tables → lists, em-dash → hyphen).">?</span>
+        <span class="tooltip" title="Enables rules that change rendering or meaning (e.g. tables → lists, em-dash → hyphen, hedge-word deletion).">?</span>
       </label>
     </div>
     <div id="url-status" class="url-status"></div>
@@ -104,7 +104,7 @@
     <aside class="rules-pane">
       <header class="lower-header">
         <h2 class="lower-title">Rules</h2>
-        <p class="lower-sub">Toggle individual rules. Three rules are off by default — they change document rendering and require <em>Aggressive mode</em>.</p>
+        <p class="lower-sub">Toggle individual rules. Four rules are off by default — they change document rendering or meaning and require <em>Aggressive mode</em>.</p>
       </header>
       <div id="rules-list"></div>
     </aside>
@@ -114,7 +114,7 @@
     <h2 class="colophon-title">Why a tokenizer-agnostic linter?</h2>
     <p>Tokenizer counts change with every model release and don't agree across vendors. Rather than pretend one number is "the" token cost, this tool gives a <em>range</em> built from two well-known rules of thumb (≈ chars/4.5 to chars/3.2, with corrections for newlines, repeated-character runs, and non-ASCII) and focuses on universal patterns that cost more in <em>every</em> tokenizer: padded tables, decorative banners, whole-paragraph emphasis, repeated URLs, hedge phrases, invisible whitespace.</p>
     <p>Inspired in part by SkillReducer (arXiv:2603.29919) and the broader "less-is-more" finding that removing non-essential content tends to <em>improve</em> agent quality, not just reduce cost. This linter handles the part of that work that doesn't require a language model.</p>
-    <p class="colophon-foot">Source on GitHub. Open in any browser; no server, no telemetry, no data leaves the page.</p>
+    <p class="colophon-foot">Source on GitHub. Open in any browser; no server, no telemetry, no document data leaves the page.</p>
   </section>
 
 </main>

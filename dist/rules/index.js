@@ -9,7 +9,7 @@ import { unwrapWholeParagraphEmphasis, flagBoldLabels, } from "./emphasis.js";
 import { flagOrphanHeadings, flagRedundantHeadingText, } from "./headings.js";
 import { stripTablePadding, twoColumnTableToList, flagWideTables, } from "./tables.js";
 import { convertRepeatedLinksToReferences, stripUrlTrackingParameters, flagBareLongUrls, } from "./links.js";
-import { verbosityRewrites } from "./verbosity.js";
+import { verbosityRewrites, hedgeDeletion } from "./verbosity.js";
 import { detectParagraphDuplication } from "./duplication.js";
 import { analyzeFrontmatter, stripFrontmatter, } from "./frontmatter.js";
 import { reportEmojiDensity } from "./emoji.js";
@@ -50,7 +50,9 @@ export const ALL_RULES = [
     convertRepeatedLinksToReferences,
     flagBareLongUrls,
     // 10. Verbosity rewrites — operate on prose, after most structural cleanup.
+    //     Hedge deletion runs after the core compressions and is aggressive-gated.
     verbosityRewrites,
+    hedgeDeletion,
     // 11. Whitespace finishing — collapse blank-line runs created by the
     //     earlier removals.
     collapseBlankLines,
